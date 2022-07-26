@@ -3,7 +3,7 @@
  *    @mail    : mchretien@linuxmail.org
  *    @project : jusst-recruitment-challenge
  *    @summary : Juust recruitement challenge for embedded dev
- *    @version : 0.2
+ *    @version : 0.3
  */
 
 #include <boost/beast/core.hpp>
@@ -29,11 +29,18 @@ void int_handler(int signum) {
     stop = 1;
 }
 
+struct led {
+	std::string color = "off";
+	int luminance = 0;
+};
+
 struct state {
 	std::string system;
 	std::string playback;
 	int volume;
 	std::string bluetooth;
+	bool struct_changed = false;
+	bool volume_changed = false;
 };
 
 // Function parsing json message and updating the struct
@@ -48,20 +55,82 @@ void json_parser(std::string json_str, struct state* dev_state) {
 
 		json::value val = val_key_pair.value();
 
-		// Update the struct
+		// Update the struct and acknowledge changes
 		if (key == "system") {
 			dev_state->system = val.as_string();
+			dev_state->struct_changed = true;
 		} else if (key == "playback") {
 			dev_state->playback = val.as_string();
+			dev_state->struct_changed = true;
 		} else if (key == "volume") {
 			dev_state->volume = val.as_int64();
+			dev_state->struct_changed = true;
+			dev_state->volume_changed = true;
 		} else if (key == "bluetooth") {
 			dev_state->bluetooth = val.as_string();
+			dev_state->struct_changed = true;
 		}
+	}
+}
+
+// Function to update the led status depending on the device state
+void update_led (struct state dev_state, struct led *sys_led) {
+
+	if (dev_state.system == "error") {
+		sys_led->color = "red";
+		sys_led->luminance = 100;
+	}
+	else if (dev_state.system == "updating") {
+		sys_led->color = "yellow";
+		sys_led->luminance = 100;
+		// TODO flashing with 1Hz
+	}
+	else if (dev_state.system == "booting") {
+		sys_led->color = "red";
+		sys_led->luminance = 10;
+	}
+	else if (dev_state.volume_changed) {
+		sys_led->color = "white";
+		sys_led->luminance = dev_state.volume;
+		// TODO For 3s
+		// TODO (bonus: fade out to off)
+	}
+	else if (dev_state.bluetooth == "pairing") {
+		sys_led->color = "blue";
+		sys_led->luminance = 100;
+		// TODO (flashing with 2Hz)
+	}
+	else if (dev_state.playback == "inactive") {
+		sys_led->color = "off";
+	}
+	else if (dev_state.playback == "playing" && dev_state.bluetooth == "connected") {
+		sys_led->color = "blue";
+		sys_led->luminance = 10;
+	}
+	else if (dev_state.playback == "playing") {
+		sys_led->color = "white";
+		sys_led->luminance = 10;
+	}
+	else if (dev_state.playback == "paused") {
+		sys_led->color = "white";
+		sys_led->luminance = 50;
 	}
 
 }
 
+// Function to print current led status
+void print_led_status (struct led sys_led) {
+	std::string c = sys_led.color;
+	std::cout << c;
+
+	if (c != "off") {
+		std::cout << "@" << sys_led.luminance;
+	}
+
+	std::cout << std::endl;
+}
+
+// Main
 int main(int argc, char** argv)
 {
 	signal(SIGINT, int_handler);
@@ -76,6 +145,9 @@ int main(int argc, char** argv)
 
 	// State stucture to hold values decoded from the websocket
 	struct state device_state;
+
+	// Led structure to hold system led values
+	struct led system_led;
 
 	try
 	{
@@ -120,13 +192,19 @@ int main(int argc, char** argv)
 			// Clear the buffer
 			buffer.clear();
 
-			// Print the current state
-			std::cout << "State :" << std::endl;
-			std::cout << "  system : " << device_state.system << std::endl;
-			std::cout << "  playback : " << device_state.playback << std::endl;
-			std::cout << "  volume : " << device_state.volume << std::endl;
-			std::cout << "  bluetooth : " << device_state.bluetooth << std::endl;
-			std::cout << std::endl;
+
+			// if the device state changed, update the led status
+			// and print it
+			if (device_state.struct_changed) {
+
+				update_led(device_state, &system_led);
+
+				// Reset change flags
+				device_state.struct_changed = false;
+				device_state.volume_changed = false;
+
+				print_led_status(system_led);
+			}
 		};
 
 		// Close the WebSocket connection
