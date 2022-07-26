@@ -10,7 +10,7 @@ TARGET=main
 SRCS=$(wildcard *.cpp)
 OBJS=$(SRCS:.cpp=.o)
 DEPS=$(OBJS:.o=.d)
-LIBS=-lboost_system
+LIBS=-lboost_system -lboost_json
 
 .PHONY: all clean mrproper
 
