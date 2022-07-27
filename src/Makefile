@@ -4,13 +4,13 @@
 
 CXX=g++
 CXXFLAGS=-Wall -O -std=c++17
-LDFLAGS=
+LDFLAGS=-lboost_system -lboost_json -lboost_thread -lboost_chrono
 DEPFLAGS=-MMD
 TARGET=main
 SRCS=$(wildcard *.cpp)
 OBJS=$(SRCS:.cpp=.o)
 DEPS=$(OBJS:.o=.d)
-LIBS=-lboost_system -lboost_json
+LIBS=
 
 .PHONY: all clean mrproper
 
