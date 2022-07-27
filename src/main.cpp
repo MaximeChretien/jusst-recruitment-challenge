@@ -3,16 +3,16 @@
  *    @mail    : mchretien@linuxmail.org
  *    @project : jusst-recruitment-challenge
  *    @summary : Juust recruitement challenge for embedded dev
- *    @version : 0.3
+ *    @version : 1.0
  */
 
-#include <boost/beast/core.hpp>
-#include <boost/beast/websocket.hpp>
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/json.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/websocket.hpp>
 #include <boost/chrono.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/json.hpp>
 #include <boost/thread/thread.hpp>
 #include <cstdlib>
 #include <iostream>
@@ -22,14 +22,14 @@
 
 namespace beast = boost::beast;         // from <boost/beast.hpp>
 namespace http = beast::http;           // from <boost/beast/http.hpp>
-namespace websocket = beast::websocket; // from <boost/beast/websocket.hpp>
+namespace json = boost::json;		// from <boost/json.hpp>
 namespace net = boost::asio;            // from <boost/asio.hpp>
-namespace json = boost::json;            // from <boost/json.hpp>
 namespace pt = boost::posix_time;	// from <boost/../posix_time.hpp>
+namespace websocket = beast::websocket; // from <boost/beast/websocket.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
-volatile sig_atomic_t stop;
-std::mutex led_lock; // Mutex to protect the led struct
+volatile sig_atomic_t stop;	// Used to stop the main loops
+std::mutex led_lock;		// Mutex to protect the led struct
 
 void int_handler(int signum) {
 	// Force stop at the second SINGINT
@@ -43,10 +43,10 @@ void int_handler(int signum) {
 struct led {
 	std::string color = "off";
 	int luminance = 0;
-	bool fade = false; // If true, fade out led
-	bool flash = false; // If true, flash the led
-	bool state = false; // If flashing true means on and false means off | if fading true means fading started
-	int time = 0; // Either fade out time or flash frequency (in ms)
+	bool fade = false;	// If true, fade out led
+	bool flash = false;	// If true, flash the led
+	bool state = false;	// If flashing true means on and false means off | if fading true means fading started
+	int time = 0;		// Either fade out time or flash frequency (in ms)
 	pt::ptime starting_time = pt::second_clock::local_time(); // Hold the starting time of an animation
 };
 
@@ -266,7 +266,8 @@ void print_led_status (struct led *sys_led) {
 	}
 }
 
-// Main
+// Main function
+// Set up everything and wait for websocket messages
 int main(int argc, char** argv)
 {
 	signal(SIGINT, int_handler);
